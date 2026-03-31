@@ -49,7 +49,7 @@ printer.
 
 ### What document formats can I print in?  What options does my printer support
 
-Ask your printer!  Use the service `ipp_printer.get_printer_information`.
+Ask your printer!  Use the action `ipp_printer.get_printer_information`.
 
 For example: document formats can be found by looking at the field
 `document-format-supported` inside the `printer` field of the response.  Paper
