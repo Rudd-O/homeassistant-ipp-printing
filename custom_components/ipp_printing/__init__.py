@@ -3,7 +3,6 @@
 from __future__ import annotations
 
 import base64
-import logging
 from typing import cast
 
 import homeassistant.helpers.device_registry as dr
@@ -19,7 +18,6 @@ from homeassistant.core import (
 from homeassistant.exceptions import HomeAssistantError
 from homeassistant.helpers import config_validation as cv
 from homeassistant.helpers.typing import ConfigType
-from homeassistant.util.json import JsonValueType
 
 from .const import DOMAIN
 from .helpers import get_printer_information_helper, print_to_ipp
