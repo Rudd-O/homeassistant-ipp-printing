@@ -72,7 +72,17 @@ async def async_setup(hass: HomeAssistant, config: ConfigType) -> bool:
             raise HomeAssistantError(
                 "Cannot find the configuration for device %s" % device_id
             )
-        job = await print_to_ipp(hass, conf, data, mimetype)
+        job = await print_to_ipp(
+            hass,
+            conf,
+            data,
+            mimetype,
+            quality=service.data.get("quality", None),
+            scaling=service.data.get("scaling", None),
+            paper_size=service.data.get("paper_size", None),
+            fidelity=service.data.get("fidelity", None),
+            orientation=service.data.get("orientation", None),
+        )
         return {"job": job}
 
     @callback

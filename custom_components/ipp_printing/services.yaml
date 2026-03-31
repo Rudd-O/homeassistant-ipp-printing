@@ -124,11 +124,63 @@ print:
           multiline: true
     mimetype:
       name: MIME type
-      description: Type of the data (after decoding from base64)
+      description: |-
+        Type of the data (after decoding from base64).
+        MIME types supported will be listed  in the printer attribute `document-format-supported` within the response of action `ipp_printing.get_printer_information`.
       required: true
       example: image/jpeg
       selector:
         text:
+    paper_size:
+      name: Paper size
+      description: |-
+        One of the IPP media sizes (`na_letter_8.5x11in`, `iso_a4_210x297mm`, et cetera) supported by the printer; if unspecified, let the printer decide.  It is possible for the printer to ignore this altogether.
+        Paper sizes supported will be listed in the printer attribute `media-supported` within the response of action `ipp_printing.get_printer_information`.
+      required: false
+      example: iso_a4_210x297mm
+      selector:
+        text:
+    orientation:
+      name: Page orientation
+      description: |-
+        How to arrange the sent data on the page.  If unspecified, let the printer decide.  It is possible for the printer to ignore this altogether.
+      required: false
+      selector:
+        select:
+          options:
+          - portrait
+          - landscape
+          - reverse-landscape
+          - reverse-portrait
+    quality:
+      name: Quality
+      description: Print quality; if unset, no specific quality is requested for the print job
+      required: false
+      selector:
+        select:
+          options:
+          - draft
+          - normal
+          - high
+    scaling:
+      name: Scaling type
+      description: How to scale the printout; if unset, no specific scaling directive is requested for the print job
+      required: false
+      example: "none"
+      selector:
+        select:
+          options:
+          - "none"
+          - "auto"
+          - "auto-fit"
+          - "fill"
+          - "fit"
+    fidelity:
+      name: Faithfulness
+      description: Some printers "modify"" job request properties in some cases; if this is set, it should cause the printer to reject print jobs whose parameters cannot be complied (e.g. wrong paper size on tray).  This is an optional part of the IPP specification; some printers do not implement it.
+      required: false
+      selector:
+        boolean:
 get_printer_information:
   name: Get printer information
   description: Obtain basic and job information from the printer

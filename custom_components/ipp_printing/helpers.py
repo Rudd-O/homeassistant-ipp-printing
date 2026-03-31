@@ -1,15 +1,16 @@
 """IPP printing integration services."""
 
+import logging
 import pyipp
 import pyipp.enums
 import pyipp.const
 import pyipp.exceptions
 
-from typing import cast
+from typing import cast, Literal
 from homeassistant.core import HomeAssistant
 
 from homeassistant.util.json import JsonValueType
-from homeassistant.exceptions import HomeAssistantError
+from homeassistant.exceptions import HomeAssistantError, ServiceValidationError
 from homeassistant.components.ipp.coordinator import IPPConfigEntry
 from homeassistant.components.ipp.const import CONF_BASE_PATH
 from homeassistant.const import (
@@ -19,6 +20,8 @@ from homeassistant.const import (
     CONF_VERIFY_SSL,
 )
 from homeassistant.helpers.aiohttp_client import async_get_clientsession
+
+_LOGGER = logging.getLogger(__name__)
 
 
 def munge_jobs(jobs: list[dict[str, JsonValueType]]) -> list[dict[str, JsonValueType]]:
@@ -33,7 +36,24 @@ def munge_jobs(jobs: list[dict[str, JsonValueType]]) -> list[dict[str, JsonValue
 
 
 async def print_to_ipp(
-    hass: HomeAssistant, conf: IPPConfigEntry, data: bytes, mimetype: str
+    hass: HomeAssistant,
+    conf: IPPConfigEntry,
+    data: bytes,
+    mimetype: str,
+    quality: Literal["draft"] | Literal["normal"] | Literal["high"] | None,
+    scaling: Literal["none"]
+    | Literal["auto"]
+    | Literal["auto-fit"]
+    | Literal["fill"]
+    | Literal["fit"]
+    | None,
+    paper_size: str | None,
+    fidelity: bool | None,
+    orientation: Literal["portrait"]
+    | Literal["landscape"]
+    | Literal["reverse-portrait"]
+    | Literal["reverse-landscape"]
+    | None,
 ) -> dict[str, JsonValueType]:
     async with pyipp.IPP(
         host=conf.data[CONF_HOST],
@@ -43,15 +63,79 @@ async def print_to_ipp(
         verify_ssl=conf.data[CONF_VERIFY_SSL],
         session=async_get_clientsession(hass, conf.data[CONF_VERIFY_SSL]),
     ) as ipp:
+        # monkey patch PyIPP deficiencies.
+        # PRs:
+        # * https://github.com/ctalkington/python-ipp/pull/720
+        # * https://github.com/ctalkington/python-ipp/pull/721
+        # * https://github.com/ctalkington/python-ipp/pull/722
+        saved_media_tag = None
+
+        from pyipp.tags import ATTRIBUTE_TAG_MAP
+
+        if "print-scaling" not in ATTRIBUTE_TAG_MAP:
+            ATTRIBUTE_TAG_MAP["print-scaling"] = pyipp.enums.IppTag.KEYWORD
+        saved_media_tag = ATTRIBUTE_TAG_MAP["media"]
+        ATTRIBUTE_TAG_MAP["media"] = pyipp.enums.IppTag.KEYWORD
+        # End monkey-patching.
+
         try:
+            opattrs: dict[str, JsonValueType] = {
+                "document-format": mimetype,
+            }
+            if fidelity is not None:
+                opattrs["ipp-attribute-fidelity"] = fidelity
+
+            jobattrs: dict[str, JsonValueType] = {}
+            if quality is not None:
+                q = pyipp.enums.IppPrintQuality
+                if quality == "draft":
+                    jobattrs["print-quality"] = int(q.DRAFT)
+                elif quality == "normal":
+                    jobattrs["print-quality"] = int(q.NORMAL)
+                elif quality == "high":
+                    jobattrs["print-quality"] = int(q.HIGH)
+                else:
+                    raise ServiceValidationError("invalid quality %r" % (quality,))
+            if orientation is not None:
+                o = pyipp.enums.IppOrientationRequested
+                if orientation == "portrait":
+                    jobattrs["orientation-requested"] = int(o.PORTRAIT)
+                elif orientation == "landscape":
+                    jobattrs["orientation-requested"] = int(o.LANDSCAPE)
+                elif orientation == "reverse-portrait":
+                    jobattrs["orientation-requested"] = int(o.REVERSE_PORTRAIT)
+                elif orientation == "reverse-landscape":
+                    jobattrs["orientation-requested"] = int(o.REVERSE_LANDSCAPE)
+                else:
+                    raise ServiceValidationError(
+                        "invalid orientation %r" % (orientation,)
+                    )
+            if scaling is not None:
+                if scaling not in ["none", "auto", "auto-fit", "fill", "fit"]:
+                    raise ServiceValidationError("invalid scaling %r" % (scaling,))
+                # monkey patch PyIPP deficiency.
+                from pyipp.tags import ATTRIBUTE_TAG_MAP
+
+                if "print-scaling" not in ATTRIBUTE_TAG_MAP:
+                    ATTRIBUTE_TAG_MAP["print-scaling"] = pyipp.enums.IppTag.KEYWORD
+                jobattrs["print-scaling"] = scaling
+            if paper_size is not None:
+                jobattrs["media"] = paper_size
+
+            pp = {
+                "operation-attributes-tag": opattrs,
+                "data": data,
+            }
+            if jobattrs:
+                pp["job-attributes-tag"] = jobattrs
+            _LOGGER.debug(
+                "Sending print job with op attributes %s and job attributes %s",
+                opattrs,
+                jobattrs,
+            )
             result = await ipp.execute(
                 pyipp.enums.IppOperation.PRINT_JOB,
-                {
-                    "operation-attributes-tag": {
-                        "document-format": mimetype,
-                    },
-                    "data": data,
-                },
+                pp,
             )
         except (
             pyipp.exceptions.IPPConnectionError,
@@ -72,6 +156,10 @@ async def print_to_ipp(
                     raise e
             else:
                 raise
+        finally:
+            # Undo monkey-patching.
+            ATTRIBUTE_TAG_MAP["media"] = saved_media_tag
+
         return munge_jobs(result["jobs"])[0]
 
 
@@ -89,19 +177,43 @@ async def get_printer_information_helper(
         verify_ssl=conf.data[CONF_VERIFY_SSL],
         session=async_get_clientsession(hass, conf.data[CONF_VERIFY_SSL]),
     ) as ipp:
+        opattr = {
+            "requested-attributes": pyipp.const.DEFAULT_PRINTER_ATTRIBUTES
+            + [
+                "document-format-supported",
+                "printer-resolution-supported",
+                "print-scaling-supported",
+                "print-quality-supported",
+                "media-size-supported",
+                "media-supported",
+                "media-col-database",
+                "media-ready",
+                "media-col-ready",
+            ],
+        }
+        _LOGGER.debug("Sending query job with attributes %s", opattr)
+
         printer_resp = await ipp.execute(
             pyipp.enums.IppOperation.GET_PRINTER_ATTRIBUTES,
             {
-                "operation-attributes-tag": {
-                    "requested-attributes": pyipp.const.DEFAULT_PRINTER_ATTRIBUTES
-                    + ["document-format-supported"],
-                },
+                "operation-attributes-tag": opattr,
             },
         )
         printer = cast(
-            JsonValueType,
-            printer_resp["printers"][0] if printer_resp["printers"] else [],
+            dict[str, JsonValueType],
+            printer_resp["printers"][0] if printer_resp["printers"] else {},
         )
+        if "print-quality-supported" in printer:
+            try:
+                printer["print-quality-supported"] = [
+                    c.name.lower()
+                    for c in cast(
+                        list[pyipp.enums.IppPrintQuality],
+                        printer["print-quality-supported"],
+                    )
+                ]
+            except Exception:
+                pass
         complete_jobs_blob = (
             await ipp.execute(
                 pyipp.enums.IppOperation.GET_JOBS,
