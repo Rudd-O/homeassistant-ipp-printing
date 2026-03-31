@@ -23,3 +23,7 @@ adds two new actions to your printers you can call:
 
 That's it.  The actions should now be available from Developer tools and
 in the script and automation editors as well.
+
+## Legal
+
+This code is distributed as-is under the MIT license.
