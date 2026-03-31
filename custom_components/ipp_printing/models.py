@@ -2,6 +2,7 @@ from dataclasses import dataclass
 
 from homeassistant.config_entries import ConfigEntry
 from homeassistant.util.hass_dict import HassKey
+
 from .const import DOMAIN
 
 

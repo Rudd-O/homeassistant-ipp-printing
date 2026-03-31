@@ -2,34 +2,33 @@
 
 from __future__ import annotations
 
-import logging
 import base64
-import homeassistant.helpers.device_registry as dr
-
+import logging
 from typing import cast
 
-from homeassistant.const import Platform
-from homeassistant.exceptions import HomeAssistantError
-from homeassistant.helpers.typing import ConfigType
+import homeassistant.helpers.device_registry as dr
 from homeassistant.components.ipp.coordinator import IPPConfigEntry
-from homeassistant.util.json import JsonValueType
-from homeassistant.helpers import config_validation as cv
+from homeassistant.const import Platform
 from homeassistant.core import (
-    ServiceCall,
     HomeAssistant,
-    callback,
+    ServiceCall,
     ServiceResponse,
     SupportsResponse,
+    callback,
 )
+from homeassistant.exceptions import HomeAssistantError
+from homeassistant.helpers import config_validation as cv
+from homeassistant.helpers.typing import ConfigType
+from homeassistant.util.json import JsonValueType
+
 from .const import DOMAIN
-from .helpers import print_to_ipp, get_printer_information_helper
+from .helpers import get_printer_information_helper, print_to_ipp
 from .models import (
+    MY_KEY,
     IPPPrintingConfigEntry,
     IPPPrintingData,
-    MY_KEY,
     IPPPrintingDomainConfig,
 )
-
 
 PLATFORMS: list[Platform] = []
 CONFIG_SCHEMA = cv.config_entry_only_config_schema(DOMAIN)

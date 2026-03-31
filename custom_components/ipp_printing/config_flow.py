@@ -8,9 +8,10 @@ from homeassistant.config_entries import ConfigEntry, ConfigFlow, ConfigFlowResu
 
 from .const import (
     DOMAIN,
+)
+from .const import (
     NAME as INTEGRATION_NAME,
 )
-
 
 _LOGGER = logging.getLogger(__name__)
 

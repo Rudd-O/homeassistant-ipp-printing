@@ -1,25 +1,24 @@
 """IPP printing integration services."""
 
 import logging
+from typing import Literal, cast
+
 import pyipp
-import pyipp.enums
 import pyipp.const
+import pyipp.enums
 import pyipp.exceptions
-
-from typing import cast, Literal
-from homeassistant.core import HomeAssistant
-
-from homeassistant.util.json import JsonValueType
-from homeassistant.exceptions import HomeAssistantError, ServiceValidationError
-from homeassistant.components.ipp.coordinator import IPPConfigEntry
 from homeassistant.components.ipp.const import CONF_BASE_PATH
+from homeassistant.components.ipp.coordinator import IPPConfigEntry
 from homeassistant.const import (
     CONF_HOST,
     CONF_PORT,
     CONF_SSL,
     CONF_VERIFY_SSL,
 )
+from homeassistant.core import HomeAssistant
+from homeassistant.exceptions import HomeAssistantError, ServiceValidationError
 from homeassistant.helpers.aiohttp_client import async_get_clientsession
+from homeassistant.util.json import JsonValueType
 
 _LOGGER = logging.getLogger(__name__)
 
