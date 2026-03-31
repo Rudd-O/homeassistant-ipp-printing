@@ -1,0 +1,10 @@
+{
+    "services": {
+        "print": {
+            "service": "mdi:printer"
+        },
+        "get_printer_information": {
+            "service": "mdi:printer-eye"
+        }
+    }
+}

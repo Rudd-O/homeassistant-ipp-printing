@@ -1,0 +1,12 @@
+{
+    "config": {
+        "step": {
+            "user": {
+                "description": "Enabling this integration allows you to print to any IPP printer already configured on your system.  Proceed?"
+            }
+        },
+        "abort": {
+            "already_configured": "Integration has already been added"
+        }
+    }
+}
