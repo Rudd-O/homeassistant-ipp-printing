@@ -13,6 +13,7 @@ from homeassistant.exceptions import HomeAssistantError
 from homeassistant.helpers.typing import ConfigType
 from homeassistant.components.ipp.coordinator import IPPConfigEntry
 from homeassistant.util.json import JsonValueType
+from homeassistant.helpers import config_validation as cv
 from homeassistant.core import (
     ServiceCall,
     HomeAssistant,
@@ -30,9 +31,8 @@ from .models import (
 )
 
 
-_LOGGER = logging.getLogger(__name__)
-
 PLATFORMS: list[Platform] = []
+CONFIG_SCHEMA = cv.config_entry_only_config_schema(DOMAIN)
 
 
 def device_id_to_config_entry(
