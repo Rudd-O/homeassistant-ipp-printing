@@ -47,11 +47,13 @@ automations (e.g. via REST triggers) and scripts in Home Assistant to print
 any document in any format, so long as the document format is supported by your
 printer.
 
-### What document formats can I print in?
+### What document formats can I print in?  What options does my printer support
 
-Ask your printer!  Use the service `ipp_printer.get_printer_information` and
-look at the field `document-format-supported` inside the `printer` field
-of the response.
+Ask your printer!  Use the service `ipp_printer.get_printer_information`.
+
+For example: document formats can be found by looking at the field
+`document-format-supported` inside the `printer` field of the response.  Paper
+sizes are listed under attribute `media-supported`.  And so on, and so forth.
 
 *Pro tip:* if your printer is a CUPS backend, it's almost certainly going to
 support a wide variety of documents, including images and PDFs.
