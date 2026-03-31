@@ -1,19 +1,19 @@
 {
   "domain": "ipp_printing",
   "name": "IPP printing",
-  "version": "0.0.1",
   "codeowners": [
     "@Rudd-O"
   ],
   "config_flow": true,
-  "documentation": "https://github.com/Rudd-O/homeassistant-ipp-printing",
-  "issue_tracker": "https://github.com/Rudd-O/homeassistant-ipp-printing/issues",
-  "homekit": {},
-  "iot_class": "local_polling",
-  "quality_scale": "bronze",
   "dependencies": [
     "ipp"
   ],
+  "documentation": "https://github.com/Rudd-O/homeassistant-ipp-printing",
+  "homekit": {},
+  "iot_class": "local_polling",
+  "issue_tracker": "https://github.com/Rudd-O/homeassistant-ipp-printing/issues",
+  "quality_scale": "bronze",
   "ssdp": [],
+  "version": "0.0.1",
   "zeroconf": []
 }
