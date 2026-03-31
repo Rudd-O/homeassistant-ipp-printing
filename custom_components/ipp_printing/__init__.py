@@ -91,14 +91,7 @@ async def async_setup(hass: HomeAssistant, config: ConfigType) -> bool:
             get_incomplete_jobs=service.data.get("job_filter", "incomplete")
             in ["all", "incomplete"],
         )
-        p: dict[str, JsonValueType] = {}
-        if printer_data.info.manufacturer:
-            p["manufacturer"] = printer_data.info.manufacturer
-        if printer_data.info.model:
-            p["model"] = printer_data.info.model
-        if printer_data.info.name:
-            p["name"] = printer_data.info.name
-        pr: ServiceResponse = {"printer": p, "jobs": jobs}
+        pr: ServiceResponse = {"printer": printer_data, "jobs": jobs}
         return pr
 
     hass.services.async_register(
