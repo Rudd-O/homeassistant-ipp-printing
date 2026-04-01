@@ -15,7 +15,7 @@ from homeassistant.core import (
     SupportsResponse,
     callback,
 )
-from homeassistant.exceptions import HomeAssistantError
+from homeassistant.exceptions import HomeAssistantError, ServiceValidationError
 from homeassistant.helpers import config_validation as cv
 from homeassistant.helpers.typing import ConfigType
 
@@ -61,25 +61,49 @@ async def async_setup(hass: HomeAssistant, config: ConfigType) -> bool:
 
     @callback
     async def print_helper(service: ServiceCall) -> ServiceResponse:
-        data = base64.b64decode(service.data["data"])
-        mimetype = service.data["mimetype"]
+        if "data" in service.data:
+            if "mimetype" not in service.data:
+                raise ServiceValidationError(
+                    "cannot request `data` to be printed without a `mimetype`"
+                )
+            if "text" in service.data:
+                raise ServiceValidationError(
+                    "cannot request both `data` and `text` to be printed"
+                )
+            data = base64.b64decode(service.data["data"])
+            mimetype = service.data["mimetype"]
+        elif "text" in service.data:
+            if "mimetype" in service.data:
+                raise ServiceValidationError(
+                    "cannot request `text` to be printed with a `mimetype`"
+                )
+            data = str(service.data["text"]).encode("utf-8")
+            mimetype = "text/plain; charset=utf-8"
+        else:
+            raise ServiceValidationError(
+                "at least one of `data` plus `mimetype`, or `text`, is required"
+            )
+
         device_id = service.data["device"]
         conf = device_id_to_config_entry(hass, device_id)
         if conf is None:
             raise HomeAssistantError(
                 "Cannot find the configuration for device %s" % device_id
             )
-        job = await print_to_ipp(
-            hass,
-            conf,
-            data,
-            mimetype,
-            quality=service.data.get("quality", None),
-            scaling=service.data.get("scaling", None),
-            paper_size=service.data.get("paper_size", None),
-            fidelity=service.data.get("fidelity", None),
-            orientation=service.data.get("orientation", None),
-        )
+        try:
+            job = await print_to_ipp(
+                hass,
+                conf,
+                data,
+                mimetype,
+                quality=service.data.get("quality", None),
+                scaling=service.data.get("scaling", None),
+                paper_size=service.data.get("paper_size", None),
+                fidelity=service.data.get("fidelity", None),
+                orientation=service.data.get("orientation", None),
+            )
+        except ValueError as e:
+            raise ServiceValidationError(str(e)) from e
         return {"job": job}
 
     @callback

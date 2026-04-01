@@ -16,7 +16,7 @@ from homeassistant.const import (
     CONF_VERIFY_SSL,
 )
 from homeassistant.core import HomeAssistant
-from homeassistant.exceptions import HomeAssistantError, ServiceValidationError
+from homeassistant.exceptions import HomeAssistantError
 from homeassistant.helpers.aiohttp_client import async_get_clientsession
 from homeassistant.util.json import JsonValueType
 
@@ -73,6 +73,7 @@ async def print_to_ipp(
 
         if "print-scaling" not in ATTRIBUTE_TAG_MAP:
             ATTRIBUTE_TAG_MAP["print-scaling"] = pyipp.enums.IppTag.KEYWORD
+
         saved_media_tag = ATTRIBUTE_TAG_MAP["media"]
         ATTRIBUTE_TAG_MAP["media"] = pyipp.enums.IppTag.KEYWORD
         # End monkey-patching.
@@ -94,7 +95,7 @@ async def print_to_ipp(
                 elif quality == "high":
                     jobattrs["print-quality"] = int(q.HIGH)
                 else:
-                    raise ServiceValidationError("invalid quality %r" % (quality,))
+                    raise ValueError("invalid quality %r" % (quality,))
             if orientation is not None:
                 o = pyipp.enums.IppOrientationRequested
                 if orientation == "portrait":
@@ -106,12 +107,10 @@ async def print_to_ipp(
                 elif orientation == "reverse-landscape":
                     jobattrs["orientation-requested"] = int(o.REVERSE_LANDSCAPE)
                 else:
-                    raise ServiceValidationError(
-                        "invalid orientation %r" % (orientation,)
-                    )
+                    raise ValueError("invalid orientation %r" % (orientation,))
             if scaling is not None:
                 if scaling not in ["none", "auto", "auto-fit", "fill", "fit"]:
-                    raise ServiceValidationError("invalid scaling %r" % (scaling,))
+                    raise ValueError("invalid scaling %r" % (scaling,))
                 # monkey patch PyIPP deficiency.
                 from pyipp.tags import ATTRIBUTE_TAG_MAP
 

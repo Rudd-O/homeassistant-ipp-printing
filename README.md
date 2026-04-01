@@ -16,12 +16,35 @@ See *Installation* below for how to set it up before attempting to use it.
 
 ## How to use this
 
+From the following instructions you should be able to deduce that you can enable
+automations (e.g. via REST triggers) and scripts in Home Assistant to print
+any document in any format, so long as the document format is supported by your
+printer.
+
+### Printing plain text
+
+If your printer supports plain text, simply:
+
+* Navigate to *Developer tools* tab *Actions* and select the `Print` action.
+* Select your printer.
+* Enable the *Text* field and type in your text.
+* Hit the *Perform action* button.
+
+### Printing other document formats supported by your printer
+
+If your printer supports other formats, such as TIFF / JPEG images, PDF or
+PostScript, follow these instructions.
+
 Base-64 encode a document in a format supported by your printer:
 
 ```sh
 base64 < little-image.png > little-image.txt
 # little-image.txt contains the encoded file
 ```
+
+Yes, we hate that you have to Base-64 encode data in order to print it, but
+actions in Home Assistant simply do not support binary data.  It's a platform
+limitation that we can do nothing about.
 
 Get the MIME type of the original file:
 
@@ -41,11 +64,6 @@ field, place the MIME type you obtained (ignore anything after the semicolon
 if your MIME type output shows that).
 
 Hit the *Perform action* button.
-
-From these instructions you should be able to deduce that you can enable
-automations (e.g. via REST triggers) and scripts in Home Assistant to print
-any document in any format, so long as the document format is supported by your
-printer.
 
 ### What document formats can I print in?  What options does my printer support
 

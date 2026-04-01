@@ -1,6 +1,8 @@
 print:
   name: Print
-  description: Send data to the printer
+  description: |-
+    Send data to the printer.
+    With most printers, this action returns when the print job has been accepted and possibly started, but not necessarily finished.
   fields:
     device:
       name: Device
@@ -9,10 +11,22 @@ print:
         device:
           filter:
           - integration: ipp
+    text:
+      name: Text
+      description: |-
+        Plain text to send to the printer.
+        May not be combined with `data` and `mimetype`.  Required if `data` isn't specified.
+        Your printer must support `text/plain` MIME type for this to work.
+      required: false
+      selector:
+        text:
+          multiline: true
     data:
       name: Data
-      description: Base64-encoded data to send to the printer
-      required: true
+      description: |-
+        Base64-encoded data to send to the printer.
+        May not be combined with `text`.  If specified, then `mimetype` is also required.
+      required: false
       example: |-
         /9j/4AAQSkZJRgABAQEBLAEsAAD/2wBDAAYEBQYFBAYGBQYHBwYIChAKCgkJChQODwwQFxQYGBcU
         FhYaHSUfGhsjHBYWICwgIyYnKSopGR8tMC0oMCUoKSj/2wBDAQcHBwoIChMKChMoGhYaKCgoKCgo
@@ -39,9 +53,10 @@ print:
     mimetype:
       name: MIME type
       description: |-
-        Type of the data (after decoding from base64).
-        MIME types supported will be listed  in the printer attribute `document-format-supported` within the response of action `ipp_printing.get_printer_information`.
-      required: true
+        Type of the data sent in the `data` attribute (after decoding from base64).
+        May not be specified if `text` is specified.
+        MIME types supported will be listed in the printer attribute `document-format-supported` within the response of action `ipp_printing.get_printer_information`.
+      required: false
       example: image/jpeg
       selector:
         text:
@@ -51,7 +66,6 @@ print:
         One of the IPP media sizes (`na_letter_8.5x11in`, `iso_a4_210x297mm`, et cetera) supported by the printer; if unspecified, let the printer decide.  It is possible for the printer to ignore this altogether.
         Paper sizes supported will be listed in the printer attribute `media-supported` within the response of action `ipp_printing.get_printer_information`.
       required: false
-      example: iso_a4_210x297mm
       selector:
         text:
     orientation:
@@ -68,7 +82,7 @@ print:
           - reverse-portrait
     quality:
       name: Quality
-      description: Print quality; if unset, no specific quality is requested for the print job
+      description: Print quality; if unset, no specific quality is requested for the print job.
       required: false
       selector:
         select:
@@ -78,9 +92,9 @@ print:
           - high
     scaling:
       name: Scaling type
-      description: How to scale the printout; if unset, no specific scaling directive is requested for the print job
+      description: How to scale the printout; if unset, no specific scaling directive is requested for the print job.
       required: false
-      example: "none"
+      # example: "none"
       selector:
         select:
           options:
@@ -97,11 +111,11 @@ print:
         boolean:
 get_printer_information:
   name: Get printer information
-  description: Obtain basic and job information from the printer
+  description: Obtain basic and job information from the printer.
   fields:
     device:
       name: Device
-      description: Printer to query information from
+      description: Printer to query information from.
       required: true
       selector:
         device:
@@ -110,9 +124,9 @@ get_printer_information:
     job_filter:
       name: Job filter
       description: |-
-        Which jobs to include
-        Complete: finished or failed jobs
-        Incomplete (the default): running, queued or otherwise not finished
+        Which jobs to include.
+        Complete: finished or failed jobs.
+        Incomplete (the default): running, queued or otherwise not finished.
       required: false
       default: incomplete
       selector:
