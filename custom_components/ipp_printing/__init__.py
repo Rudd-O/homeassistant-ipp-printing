@@ -52,6 +52,30 @@ def device_id_to_config_entry(
     return matching_config_entries[0]
 
 
+def get_device_id(call: ServiceCall) -> str:
+    try:
+        device_id = call.data["device_id"]
+    except KeyError:
+        raise ServiceValidationError(
+            "no device specified — this service supports only devices as targets"
+        )
+    if len(device_id) != 1:
+        raise ServiceValidationError("only a single device is supported at a time")
+    if "entity_id" in call.data:
+        raise ServiceValidationError(
+            "entities are not supported as targets for this service"
+        )
+    if "label_id" in call.data:
+        raise ServiceValidationError(
+            "labels are not supported as targets for this service"
+        )
+    if "area_id" in call.data:
+        raise ServiceValidationError(
+            "areas are not supported as targets for this service"
+        )
+    return device_id[0]
+
+
 async def async_setup(hass: HomeAssistant, config: ConfigType) -> bool:
     """Integration setup."""
 
@@ -60,31 +84,31 @@ async def async_setup(hass: HomeAssistant, config: ConfigType) -> bool:
     hass.data[MY_KEY] = domain_config
 
     @callback
-    async def print_helper(service: ServiceCall) -> ServiceResponse:
-        if "data" in service.data:
-            if "mimetype" not in service.data:
+    async def print_helper(call: ServiceCall) -> ServiceResponse:
+        if "data" in call.data:
+            if "mimetype" not in call.data:
                 raise ServiceValidationError(
                     "cannot request `data` to be printed without a `mimetype`"
                 )
-            if "text" in service.data:
+            if "text" in call.data:
                 raise ServiceValidationError(
                     "cannot request both `data` and `text` to be printed"
                 )
-            data = base64.b64decode(service.data["data"])
-            mimetype = service.data["mimetype"]
-        elif "text" in service.data:
-            if "mimetype" in service.data:
+            data = base64.b64decode(call.data["data"])
+            mimetype = call.data["mimetype"]
+        elif "text" in call.data:
+            if "mimetype" in call.data:
                 raise ServiceValidationError(
                     "cannot request `text` to be printed with a `mimetype`"
                 )
-            data = str(service.data["text"]).encode("utf-8")
+            data = str(call.data["text"]).encode("utf-8")
             mimetype = "text/plain; charset=utf-8"
         else:
             raise ServiceValidationError(
                 "at least one of `data` plus `mimetype`, or `text`, is required"
             )
 
-        device_id = service.data["device"]
+        device_id = get_device_id(call)
         conf = device_id_to_config_entry(hass, device_id)
         if conf is None:
             raise HomeAssistantError(
@@ -96,19 +120,19 @@ async def async_setup(hass: HomeAssistant, config: ConfigType) -> bool:
                 conf,
                 data,
                 mimetype,
-                quality=service.data.get("quality", None),
-                scaling=service.data.get("scaling", None),
-                paper_size=service.data.get("paper_size", None),
-                fidelity=service.data.get("fidelity", None),
-                orientation=service.data.get("orientation", None),
+                quality=call.data.get("quality", None),
+                scaling=call.data.get("scaling", None),
+                paper_size=call.data.get("paper_size", None),
+                fidelity=call.data.get("fidelity", None),
+                orientation=call.data.get("orientation", None),
             )
         except ValueError as e:
             raise ServiceValidationError(str(e)) from e
         return {"job": job}
 
     @callback
-    async def print_information_service(service: ServiceCall) -> ServiceResponse:
-        device_id = service.data["device"]
+    async def print_information_service(call: ServiceCall) -> ServiceResponse:
+        device_id = get_device_id(call)
         conf = device_id_to_config_entry(hass, device_id)
         if conf is None:
             raise HomeAssistantError(
@@ -117,9 +141,9 @@ async def async_setup(hass: HomeAssistant, config: ConfigType) -> bool:
         printer_data, jobs = await get_printer_information_helper(
             hass,
             conf,
-            get_complete_jobs=service.data.get("job_filter", "incomplete")
+            get_complete_jobs=call.data.get("job_filter", "incomplete")
             in ["all", "complete"],
-            get_incomplete_jobs=service.data.get("job_filter", "incomplete")
+            get_incomplete_jobs=call.data.get("job_filter", "incomplete")
             in ["all", "incomplete"],
         )
         pr: ServiceResponse = {"printer": printer_data, "jobs": jobs}
