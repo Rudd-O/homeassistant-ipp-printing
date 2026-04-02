@@ -17,6 +17,8 @@ This may seem trivial, especially if you have no source of data to print
 [Simple image raster integration](https://github.com/Rudd-O/hass-simple-image-raster)
 for Home Assistant to generate images on the fly, and combine it with this
 extension to print anything you want, through automations and scripts.
+In particular, check out [the examples](https://github.com/Rudd-O/hass-simple-image-raster/tree/master/examples)
+to see what you can do with this combination of integrations.
 
 See *Installation* below for how to set it up before attempting to use it.
 
