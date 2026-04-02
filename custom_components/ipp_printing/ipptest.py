@@ -1,53 +1,43 @@
 # Short snippet of code that allows me to test the printer.
 
+import sys
 import logging
 import asyncio
 import pyipp
 import pyipp.enums
 from pyipp.enums import IppTag
-from pyipp.serializer import IppAttribute
 from typing import Any
 
 
-async def main() -> None:
+async def main(fname: str) -> None:
     logging.basicConfig(level=logging.DEBUG)
     async with pyipp.IPP(
-        host="localhost",
+        host="10.250.1.47",
         port=631,
-        base_path="/printers/Cups-PDF",
+        base_path="/printers/Dymo_LabelWriter_550_Turbo",
         tls=False,
         verify_ssl=True,
     ) as ipp:
         print(await ipp.printer())
-        opattrs: dict[str, Any] = {"document-format": "text/plain"}
+        opattrs: dict[str, Any] = {"document-format": "application/pdf"}
         jobattrs: dict[str, Any] = {}
-        # if paper_size is not None: FIXME UNCOMMENT
-        #    jobattrs["media"] = paper_size
-        jobattrs["media-col"] = {
-            "media-size": {
-                "x-dimension": IppAttribute(IppTag.INTEGER, 21590),  # ; US Letter Width
-                "y-dimension": IppAttribute(
-                    IppTag.INTEGER, 27940
-                ),  # ; US Letter Length
-            },
-            "media-top-margin": IppAttribute(IppTag.INTEGER, 500),
-            # "media-right-margin": IppAttribute(IppTag.INTEGER, 1270),
-            # "media-top-margin": IppAttribute(IppTag.INTEGER, 1270),
-            # "media-bottom-margin": IppAttribute(IppTag.INTEGER, 1270),
-        }
-        jobattrs["print-scaling"] = IppAttribute(IppTag.KEYWORD, "none")
-        jobattrs["media-left-margin"] = (IppAttribute(IppTag.INTEGER, 72),)
-        # jobattrs["page-left"] = IppAttribute(
-        #     IppTag.INTEGER,
-        #     72,
-        # )
+        # Requires forked python-ipp.
+        # jobattrs["media-col"] = {
+        #    "media-size": {
+        #        "x-dimension": IppAttribute(IppTag.INTEGER, 8890),
+        #        "y-dimension": IppAttribute(IppTag.INTEGER, 3560),
+        #    },
+        # }
+        # jobattrs["page-top"] = 0
+        jobattrs["print-scaling"] = "none"
 
         pp = {
             "operation-attributes-tag": opattrs,
             "job-attributes-tag": jobattrs,
-            "data": "hello world!".encode(
-                "utf-8"
-            ),  # open("/home/user/Downloads/testpage.jpg", "rb").read(),
+            "data": open(
+                fname,
+                "rb",
+            ).read(),
         }
         print(
             await ipp.execute(
@@ -58,4 +48,4 @@ async def main() -> None:
 
 
 loop = asyncio.get_event_loop()
-loop.run_until_complete(main())
+loop.run_until_complete(main(sys.argv[1]))

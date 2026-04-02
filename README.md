@@ -12,6 +12,12 @@ adds two new actions to your printers you can call:
    you would like information on.  The returned data lists basic printer
    information and the status of all known jobs.
 
+This may seem trivial, especially if you have no source of data to print
+— but there is.  Check out the
+[Simple image raster integration](https://github.com/Rudd-O/hass-simple-image-raster)
+for Home Assistant to generate images on the fly, and combine it with this
+extension to print anything you want, through automations and scripts.
+
 See *Installation* below for how to set it up before attempting to use it.
 
 ## How to use this
