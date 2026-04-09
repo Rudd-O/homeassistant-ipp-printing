@@ -1,22 +1,27 @@
 """IPP printing integration services."""
 
 import logging
-from typing import Literal, cast
+from typing import Literal, cast, Any
 
 import pyipp
 import pyipp.const
 import pyipp.enums
 import pyipp.exceptions
-from homeassistant.components.ipp.const import CONF_BASE_PATH
+from homeassistant.components.ipp.const import CONF_BASE_PATH, DOMAIN as IPP_DOMAIN
 from homeassistant.components.ipp.coordinator import IPPConfigEntry
 from homeassistant.const import (
     CONF_HOST,
+    ATTR_AREA_ID,
+    ATTR_DEVICE_ID,
+    ATTR_ENTITY_ID,
     CONF_PORT,
     CONF_SSL,
     CONF_VERIFY_SSL,
 )
-from homeassistant.core import HomeAssistant
-from homeassistant.exceptions import HomeAssistantError
+from homeassistant.core import HomeAssistant, callback, ServiceCall
+from homeassistant.exceptions import HomeAssistantError, ServiceValidationError
+from homeassistant.helpers import device_registry as dr, entity_registry as er
+from homeassistant.helpers.group import expand_entity_ids
 from homeassistant.helpers.aiohttp_client import async_get_clientsession
 from homeassistant.util.json import JsonValueType
 
@@ -24,7 +29,7 @@ _LOGGER = logging.getLogger(__name__)
 
 
 def munge_jobs(jobs: list[dict[str, JsonValueType]]) -> list[dict[str, JsonValueType]]:
-    new_jobs = []
+    new_jobs: list[dict[str, JsonValueType]] = []
     for job in jobs:
         job = job.copy()
         job_state: int = cast(int, job["job-state"])
@@ -120,7 +125,7 @@ async def print_to_ipp(
             if paper_size is not None:
                 jobattrs["media"] = paper_size
 
-            pp = {
+            pp: dict[str, JsonValueType | bytes] = {
                 "operation-attributes-tag": opattrs,
                 "data": data,
             }
@@ -250,3 +255,108 @@ async def get_printer_information_helper(
         jobs = munge_jobs(jobs)
 
     return printer, cast(list[JsonValueType], jobs)
+
+
+@callback
+def async_get_device_from_entity_id(
+    hass: HomeAssistant,
+    entity_id: str,
+    ent_reg: er.EntityRegistry | None = None,
+    dev_reg: dr.DeviceRegistry | None = None,
+) -> str:
+    """Get node from an entity ID.
+
+    Raises ValueError if entity is invalid.
+    """
+    if not ent_reg:
+        ent_reg = er.async_get(hass)
+    entity_entry = ent_reg.async_get(entity_id)
+
+    if entity_entry is None or entity_entry.platform != IPP_DOMAIN:
+        raise ValueError(f"Entity {entity_id} is not a valid {IPP_DOMAIN} entity")
+
+    # Assert for mypy, safe because we know that zwave_js entities are always
+    # tied to a device
+    assert entity_entry.device_id
+    return entity_entry.device_id
+
+
+@callback
+def async_get_devices_from_area_id(
+    hass: HomeAssistant,
+    area_id: str,
+    ent_reg: er.EntityRegistry | None = None,
+    dev_reg: dr.DeviceRegistry | None = None,
+) -> set[str]:
+    """Get nodes for all Z-Wave JS devices and entities that are in an area."""
+    devices: set[str] = set()
+    if ent_reg is None:
+        ent_reg = er.async_get(hass)
+    if dev_reg is None:
+        dev_reg = dr.async_get(hass)
+    # Add devices for all entities in an area that are IPP entities
+    devices.update(
+        {
+            entity.device_id
+            for entity in er.async_entries_for_area(ent_reg, area_id)
+            if entity.platform == IPP_DOMAIN and entity.device_id is not None
+        }
+    )
+    # Add devices in an area that are IPP devices
+    devices.update(
+        device.id
+        for device in dr.async_entries_for_area(dev_reg, area_id)
+        if any(
+            cast(
+                IPPConfigEntry,
+                hass.config_entries.async_get_entry(config_entry_id),
+            ).domain
+            == IPP_DOMAIN
+            for config_entry_id in device.config_entries
+        )
+    )
+
+    return devices
+
+
+@callback
+def async_get_devices_from_targets(
+    hass: HomeAssistant,
+    val: dict[str, Any],
+    ent_reg: er.EntityRegistry | None = None,
+    dev_reg: dr.DeviceRegistry | None = None,
+    logger: logging.Logger = _LOGGER,
+) -> set[str]:
+    """Get devices for all targets.
+
+    Supports entity_id with group expansion, area_id, and device_id.
+    """
+    devices: set[str] = set()
+    # Convert all entity IDs to nodes
+    for entity_id in expand_entity_ids(hass, val.get(ATTR_ENTITY_ID, [])):
+        try:
+            devices.add(
+                async_get_device_from_entity_id(hass, entity_id, ent_reg, dev_reg)
+            )
+        except ValueError as err:
+            logger.warning(err.args[0])
+
+    # Convert all area IDs to nodes
+    for area_id in val.get(ATTR_AREA_ID, []):
+        devices.update(async_get_devices_from_area_id(hass, area_id, ent_reg, dev_reg))
+
+    # Convert all device IDs to nodes
+    for device_id in val.get(ATTR_DEVICE_ID, []):
+        try:
+            devices.add(device_id)
+        except ValueError as err:
+            logger.warning(err.args[0])
+
+    return devices
+
+
+def get_device_id(hass: HomeAssistant, call: ServiceCall) -> str:
+    device_id = list(async_get_devices_from_targets(hass, call.data))
+    if len(device_id) != 1:
+        raise ServiceValidationError("only a single device is supported at a time")
+    return device_id[0]

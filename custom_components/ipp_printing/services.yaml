@@ -4,8 +4,8 @@ print:
     Send data to the printer.
     With most printers, this action returns when the print job has been accepted and possibly started, but not necessarily finished.
   target:
-    device:
-      integration: ipp
+    entity:
+      - integration: ipp
   fields:
     text:
       name: Text
@@ -109,8 +109,8 @@ get_printer_information:
   name: Get printer information
   description: Obtain basic and job information from the printer.
   target:
-    device:
-      integration: ipp
+    entity:
+      - integration: ipp
   fields:
     job_filter:
       name: Job filter

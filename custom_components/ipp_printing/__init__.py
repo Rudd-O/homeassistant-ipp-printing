@@ -20,7 +20,7 @@ from homeassistant.helpers import config_validation as cv
 from homeassistant.helpers.typing import ConfigType
 
 from .const import DOMAIN
-from .helpers import get_printer_information_helper, print_to_ipp
+from .helpers import get_printer_information_helper, print_to_ipp, get_device_id
 from .models import (
     MY_KEY,
     IPPPrintingConfigEntry,
@@ -50,30 +50,6 @@ def device_id_to_config_entry(
     if not matching_config_entries:
         return None
     return matching_config_entries[0]
-
-
-def get_device_id(call: ServiceCall) -> str:
-    try:
-        device_id = call.data["device_id"]
-    except KeyError:
-        raise ServiceValidationError(
-            "no device specified — this service supports only devices as targets"
-        )
-    if len(device_id) != 1:
-        raise ServiceValidationError("only a single device is supported at a time")
-    if "entity_id" in call.data:
-        raise ServiceValidationError(
-            "entities are not supported as targets for this service"
-        )
-    if "label_id" in call.data:
-        raise ServiceValidationError(
-            "labels are not supported as targets for this service"
-        )
-    if "area_id" in call.data:
-        raise ServiceValidationError(
-            "areas are not supported as targets for this service"
-        )
-    return device_id[0]
 
 
 async def async_setup(hass: HomeAssistant, config: ConfigType) -> bool:
@@ -108,7 +84,7 @@ async def async_setup(hass: HomeAssistant, config: ConfigType) -> bool:
                 "at least one of `data` plus `mimetype`, or `text`, is required"
             )
 
-        device_id = get_device_id(call)
+        device_id = get_device_id(hass, call)
         conf = device_id_to_config_entry(hass, device_id)
         if conf is None:
             raise HomeAssistantError(
@@ -132,7 +108,7 @@ async def async_setup(hass: HomeAssistant, config: ConfigType) -> bool:
 
     @callback
     async def print_information_service(call: ServiceCall) -> ServiceResponse:
-        device_id = get_device_id(call)
+        device_id = get_device_id(hass, call)
         conf = device_id_to_config_entry(hass, device_id)
         if conf is None:
             raise HomeAssistantError(
